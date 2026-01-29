@@ -14,12 +14,10 @@ load_dotenv()
 MODEL_SIZE = "base.en"
 SAMPLE_RATE = 16000
 
-# 🔴 FIX: USE DEVICE 0 (Raw Hardware)
 MIC_DEVICE_ID = 9
 
-# --- IMPORT BRAIN ---
 try:
-    from brain import process_user_input
+    from ai import process_user_input
 except ImportError:
     def process_user_input(text): return f"I heard: {text} (Brain not connected)"
 
@@ -143,3 +141,23 @@ if __name__ == "__main__":
         asyncio.run(main_loop())
     except KeyboardInterrupt:
         print("\nGoodbye!")
+# Add this to main.py (doesn't matter where, usually near the bottom)
+def record_manual_api(duration=5):
+    print(f"🔴 API RECORDING ({duration}s)...")
+    with audio_queue.mutex:
+        audio_queue.queue.clear()
+    try:
+        recording = sd.rec(
+            int(duration * SAMPLE_RATE), 
+            samplerate=SAMPLE_RATE, 
+            channels=2, 
+            dtype='int16',
+            device=MIC_DEVICE_ID
+        )
+        sd.wait()
+        if recording.ndim > 1 and recording.shape[1] == 2:
+            recording = recording[:, 0]
+        return recording.flatten()
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return np.array([])
